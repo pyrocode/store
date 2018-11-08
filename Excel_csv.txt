@@ -1,0 +1,158 @@
+
+Sub LoadDataFromCSV()
+'Imports the text separated by sSepChar in sSourceFile to
+'Range(sTargetAddress). Overwrites any old data.
+'Normally this procedure would be called by another
+'passing info about the text file's name and path, separator
+'(sSepChar) and maybe where to insert the text - the cell
+'adress (sTargetSddress).
+
+Dim sDel As String * 1
+Dim LineString As String
+Dim sSourceFile As String
+Dim sSepChar As String
+Dim sTargetAddress As String
+Dim rTargetCell As Range
+Dim vTargetValues As Variant
+Dim r As Long
+Dim fLen As Long
+Dim fn As Integer
+
+On Error GoTo ErrorHandle
+
+'Text file and path
+With Application.FileDialog(msoFileDialogFilePicker)
+    .AllowMultiSelect = False
+    'Filter to just the following types of files to narrow down selection options
+    .Filters.Add "Text Files", "*.csv", 1
+    'Show the dialog box
+    .Show
+        
+    'Store in fullpath variable
+    sSourceFile = .SelectedItems.Item(1)
+End With
+    
+'It's a good idea to still check if the file type selected is accurate.
+'Quit the procedure if the user didn't select the type of file we need.
+If InStr(sSourceFile, ".csv") = 0 Then
+    Exit Sub
+End If
+
+'Separator (delimiter)
+sSepChar = ","
+
+'Start cell for writing data
+sTargetAddress = "A3"
+
+'sSourceFile doesn't exist
+If Len(Dir(sSourceFile)) = 0 Then Exit Sub
+
+'Identifies the delimiter
+If UCase(sSepChar) = "TAB" Or UCase(sSepChar) = "T" Then
+   sDel = Chr(9)
+Else
+   sDel = Left(sSepChar, 1)
+End If
+
+'Import data
+Worksheets(2).Activate
+
+'Sets the range for the start cell
+Set rTargetCell = Range(sTargetAddress).Cells(1, 1)
+
+'Deletes any old data
+rTargetCell.CurrentRegion.ClearContents
+
+On Error GoTo BeforeExit
+
+'Gets a free file number from the operating system
+fn = FreeFile
+
+'Opens the file for input
+Open sSourceFile For Input As #fn
+On Error GoTo 0
+fLen = LOF(fn)
+r = 0
+While Not EOF(fn)
+   Line Input #fn, LineString
+   'Calls the function that parses the text.
+   vTargetValues = ParseDelimitedString(LineString, sSepChar)
+   'Writes to cells
+   UpdateCells rTargetCell.Offset(r, 0), vTargetValues
+   r = r + 1
+Wend
+
+'Closes the text file
+Close #fn
+
+BeforeExit:
+Set rTargetCell = Nothing
+
+Exit Sub
+ErrorHandle:
+MsgBox Err.Description & " Error in ImportDelimitedText."
+Resume BeforeExit
+End Sub
+
+
+
+Function ParseDelimitedString(InputString As String, _
+sDel As String) As Variant
+'Returns a variant array with every element in
+'InputString separated by sDel.
+
+Dim i As Integer, iCount As Integer
+Dim sString As String, sChar As String * 1
+Dim ResultArray() As Variant
+
+On Error GoTo ErrorHandle
+
+sString = ""
+iCount = 0
+For i = 1 To Len(InputString)
+   sChar = Mid$(InputString, i, 1)
+   If sChar = sDel Then
+   iCount = iCount + 1
+      ReDim Preserve ResultArray(1 To iCount)
+      ResultArray(iCount) = sString
+      sString = ""
+   Else
+      sString = sString & sChar
+   End If
+Next i
+
+iCount = iCount + 1
+ReDim Preserve ResultArray(1 To iCount)
+ResultArray(iCount) = sString
+ParseDelimitedString = ResultArray
+
+Exit Function
+ErrorHandle:
+MsgBox Err.Description & " Error in function ParseDelimitedString."
+End Function
+
+
+Sub UpdateCells(rTargetRange As Range, vTargetValues As Variant)
+'Writes the content in vTargetValues
+'to the active sheet starting in rTargetRange.
+'Overwrites existing data.
+
+Dim r As Long, c As Integer
+
+On Error GoTo ErrorHandle
+
+If TypeName(ActiveSheet) <> "Worksheet" Then Exit Sub
+r = 1
+c = 1
+
+On Error Resume Next
+
+c = UBound(vTargetValues, 1)
+r = UBound(vTargetValues, 2)
+Range(rTargetRange.Cells(1, 1), rTargetRange.Cells(1, 1). _
+Offset(r - 1, c - 1)).Formula = vTargetValues
+
+Exit Sub
+ErrorHandle:
+MsgBox Err.Description & " Error in procedure UpdateCells."
+End Sub
