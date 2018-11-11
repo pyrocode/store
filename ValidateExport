@@ -1,0 +1,40 @@
+
+Public Sub ExportWorksheetAndSaveAsCSV()
+
+Dim wbkExport As Workbook
+Dim shtToExport As Worksheet
+
+Set shtToExport = ThisWorkbook.Worksheets("Accounts")     'Sheet to export as CSV
+
+'Text file and path
+With Application.FileDialog(msoFileDialogSaveAs)
+    .AllowMultiSelect = False
+    'Filter to just the following types of files to narrow down selection options
+    '.Filters.Add "CSV (Comma delimited)", "*.csv", 1
+    '.Filters.Item(0) = "*.csv"
+    .InitialFileName = "ICTO-1234" + ".csv"
+    'Show the dialog box
+    .Show
+        
+    'Store in fullpath variable
+    sTargetFile = .SelectedItems.Item(1)
+End With
+
+Set wbkExport = Application.Workbooks.Add
+shtToExport.Copy Before:=wbkExport.Worksheets(wbkExport.Worksheets.Count)
+
+Application.DisplayAlerts = False                       'Possibly overwrite without asking
+wbkExport.SaveAs fileName:=sTargetFile, FileFormat:=xlCSV
+
+wbkExport.Close SaveChanges:=False
+
+End Sub
+
+
+
+
+Public Sub Validate()
+
+MsgBox "Validated!!"
+
+End Sub
